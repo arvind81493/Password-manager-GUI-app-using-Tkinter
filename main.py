@@ -1,84 +1,79 @@
-import requests
-from twilio.rest import Client
+from tkinter import *
+from tkinter import messagebox
+from random import choice, randint, shuffle
+import pyperclip
 
-VIRTUAL_TWILIO_NUMBER = "your virtual twilio number"
-VERIFIED_NUMBER = "your own phone number verified with Twilio"
+# ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
-STOCK_NAME = "TSLA"
-COMPANY_NAME = "Tesla Inc"
+#Password Generator Project
+def generate_password():
+    letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    symbols = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
 
-STOCK_ENDPOINT = "https://www.alphavantage.co/query"
-NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
+    password_letters = [choice(letters) for _ in range(randint(8, 10))]
+    password_symbols = [choice(symbols) for _ in range(randint(2, 4))]
+    password_numbers = [choice(numbers) for _ in range(randint(2, 4))]
 
-STOCK_API_KEY = "YOUR OWN API KEY FROM ALPHAVANTAGE"
-NEWS_API_KEY = "YOUR OWN API KEY FROM NEWSAPI"
-TWILIO_SID = "YOUR TWILIO ACCOUNT SID"
-TWILIO_AUTH_TOKEN = "YOUR TWILIO AUTH TOKEN"
+    password_list = password_letters + password_symbols + password_numbers
+    shuffle(password_list)
 
-## STEP 1: Use https://www.alphavantage.co/documentation/#daily
-# When stock price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
+    password = "".join(password_list)
+    password_entry.insert(0, password)
+    pyperclip.copy(password)
 
-#Get yesterday's closing stock price
-stock_params = {
-    "function": "TIME_SERIES_DAILY",
-    "symbol": STOCK_NAME,
-    "apikey": STOCK_API_KEY,
-}
+# ---------------------------- SAVE PASSWORD ------------------------------- #
+def save():
 
-response = requests.get(STOCK_ENDPOINT, params=stock_params)
-data = response.json()["Time Series (Daily)"]
-data_list = [value for (key, value) in data.items()]
-yesterday_data = data_list[0]
-yesterday_closing_price = yesterday_data["4. close"]
-print(yesterday_closing_price)
+    website = website_entry.get()
+    email = email_entry.get()
+    password = password_entry.get()
 
-#Get the day before yesterday's closing stock price
-day_before_yesterday_data = data_list[1]
-day_before_yesterday_closing_price = day_before_yesterday_data["4. close"]
-print(day_before_yesterday_closing_price)
-
-#Find the positive difference between 1 and 2. e.g. 40 - 20 = -20, but the positive difference is 20. Hint: https://www.w3schools.com/python/ref_func_abs.asp
-difference = float(yesterday_closing_price) - float(day_before_yesterday_closing_price)
-up_down = None
-if difference > 0:
-    up_down = "🔺"
-else:
-    up_down = "🔻"
-
-#Work out the percentage difference in price between closing price yesterday and closing price the day before yesterday.
-diff_percent = round((difference / float(yesterday_closing_price)) * 100)
-print(diff_percent)
+    if len(website) == 0 or len(password) == 0:
+        messagebox.showinfo(title="Oops", message="Please make sure you haven't left any fields empty.")
+    else:
+        is_ok = messagebox.askokcancel(title=website, message=f"These are the details entered: \nEmail: {email} "
+                                                      f"\nPassword: {password} \nIs it ok to save?")
+        if is_ok:
+            with open("data.txt", "a") as data_file:
+                data_file.write(f"{website} | {email} | {password}\n")
+                website_entry.delete(0, END)
+                password_entry.delete(0, END)
 
 
-    ## STEP 2: Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME.
+# ---------------------------- UI SETUP ------------------------------- #
 
-#Instead of printing ("Get News"), use the News API to get articles related to the COMPANY_NAME.
-#If difference percentage is greater than 5 then print("Get News").
-if abs(diff_percent) > 1:
-    news_params = {
-        "apiKey": NEWS_API_KEY,
-        "qInTitle": COMPANY_NAME,
-    }
+window = Tk()
+window.title("Password Manager")
+window.config(padx=50, pady=50)
 
-    news_response = requests.get(NEWS_ENDPOINT, params=news_params)
-    articles = news_response.json()["articles"]
+canvas = Canvas(height=200, width=200)
+logo_img = PhotoImage(file="logo.png")
+canvas.create_image(100, 100, image=logo_img)
+canvas.grid(row=0, column=1)
 
-    #Use Python slice operator to create a list that contains the first 3 articles. Hint: https://stackoverflow.com/questions/509211/understanding-slice-notation
-    three_articles = articles[:3]
-    print(three_articles)
+#Labels
+website_label = Label(text="Website:")
+website_label.grid(row=1, column=0)
+email_label = Label(text="Email/Username:")
+email_label.grid(row=2, column=0)
+password_label = Label(text="Password:")
+password_label.grid(row=3, column=0)
 
-    ## STEP 3: Use Twilio to send a seperate message with each article's title and description to your phone number.
+#Entries
+website_entry = Entry(width=35)
+website_entry.grid(row=1, column=1, columnspan=2)
+website_entry.focus()
+email_entry = Entry(width=35)
+email_entry.grid(row=2, column=1, columnspan=2)
+email_entry.insert(0, "angela@gmail.com")
+password_entry = Entry(width=21)
+password_entry.grid(row=3, column=1)
 
-    #Create a new list of the first 3 article's headline and description using list comprehension.
-    formatted_articles = [f"{STOCK_NAME}: {up_down}{diff_percent}%\nHeadline: {article['title']}. \nBrief: {article['description']}" for article in three_articles]
-    print(formatted_articles)
-    #Send each article as a separate message via Twilio.
-    client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+# Buttons
+generate_password_button = Button(text="Generate Password", command=generate_password)
+generate_password_button.grid(row=3, column=2)
+add_button = Button(text="Add", width=36, command=save)
+add_button.grid(row=4, column=1, columnspan=2)
 
-    #TODO 8. - Send each article as a separate message via Twilio.
-    for article in formatted_articles:
-        message = client.messages.create(
-            body=article,
-            from_=VIRTUAL_TWILIO_NUMBER,
-            to=VERIFIED_NUMBER
-        )
+window.mainloop()
